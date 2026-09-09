@@ -32,6 +32,7 @@ import {
   INITIAL_MASHWEER_EMAILS,
   INITIAL_SERVICE_PROVIDERS 
 } from './data/initialProjects';
+import { fetchAllDataFromSupabase } from './lib/supabase';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('chat');
@@ -197,6 +198,32 @@ export default function App() {
       console.error(e);
     }
   }, [apiEndpoints]);
+
+  // Automatic Cloud Sync: Hydrate local state from Supabase if available
+  useEffect(() => {
+    let isMounted = true;
+    fetchAllDataFromSupabase().then((data) => {
+      if (!isMounted || !data) return;
+      if (data.projects && data.projects.length > 0) {
+        setProjects(data.projects);
+      }
+      if (data.providers && data.providers.length > 0) {
+        setServiceProviders(data.providers);
+      }
+      if (data.contracts && data.contracts.length > 0) {
+        setContracts(data.contracts);
+      }
+      if (data.emails && data.emails.length > 0) {
+        setMashweerEmails(data.emails);
+      }
+      if (data.tasks && data.tasks.length > 0) {
+        setTasks(data.tasks);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Messages State
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -518,7 +545,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'settings' && <SettingsTab projects={projects} />}
+          {currentTab === 'settings' && <SettingsTab projects={projects} onNavigateToTab={setCurrentTab} />}
         </main>
       </div>
 

@@ -1,9 +1,127 @@
 -- ==============================================================================
--- NOUB Platform - Hypatia Seed Data
--- Run this in Supabase SQL Editor to populate all projects, providers, contracts, & emails
+-- NOUB Platform - Hypatia: COMPLETE ALL-IN-ONE SUPABASE SCRIPT
+-- Schema Creation + Permissions (RLS) + Complete Seed Data
+-- Organization: NOUB-Platform | System: Hypatia AI Core
 -- ==============================================================================
 
--- 0. Ensure all columns exist even if tables were previously created
+-- 1. Enable UUID Extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ==============================================================================
+-- 2. CREATE TABLES IF NOT EXIST
+-- ==============================================================================
+
+-- 2.1 Projects Table (المشاريع والمستودعات)
+CREATE TABLE IF NOT EXISTS public.projects (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'أخرى',
+    status TEXT NOT NULL DEFAULT 'نشط',
+    description TEXT,
+    repo_url TEXT,
+    figma_url TEXT,
+    live_url TEXT,
+    apk_files JSONB DEFAULT '[]'::jsonb,
+    drive_assets JSONB DEFAULT '[]'::jsonb,
+    reference_chats JSONB DEFAULT '[]'::jsonb,
+    context_hints JSONB DEFAULT '[]'::jsonb,
+    db_info JSONB DEFAULT '{"engine": "PostgreSQL", "tables": []}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.2 Service Providers & Cloud Vault (المزودين واستضافات السحابة)
+CREATE TABLE IF NOT EXISTS public.service_providers (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'استضافة وخوادم',
+    portal_url TEXT,
+    username TEXT,
+    status TEXT NOT NULL DEFAULT 'نشط',
+    notes TEXT,
+    cost_or_plan TEXT,
+    official_badge TEXT,
+    active_services JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.3 Contracts & Deliverables (العقود والتسليمات والماليات)
+CREATE TABLE IF NOT EXISTS public.contracts (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    title TEXT NOT NULL,
+    provider_name TEXT NOT NULL,
+    project_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'قيد التنفيذ',
+    total_value TEXT,
+    currency TEXT DEFAULT 'EGP',
+    payment_terms TEXT,
+    deliverables JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.4 Domains & Mailboxes (النطاقات والبريد المؤسسي لمشاوير)
+CREATE TABLE IF NOT EXISTS public.mashweer_emails (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    address TEXT NOT NULL UNIQUE,
+    role_title TEXT NOT NULL,
+    department TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'مجدول للتفعيل',
+    quota TEXT DEFAULT '5 GB',
+    assigned_to TEXT,
+    webmail_url TEXT DEFAULT 'https://mashawer.com.eg:2096',
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.5 Project Tasks & Milestones (المهام التشغيلية ومتابعة المطورين)
+CREATE TABLE IF NOT EXISTS public.project_tasks (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    project_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    priority TEXT NOT NULL DEFAULT 'متوسطة',
+    status TEXT NOT NULL DEFAULT 'قيد التنفيذ',
+    due_date TEXT,
+    assigned_to TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.6 Chat History (سجل محادثات هيباتيا الذكية)
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    project_id TEXT,
+    sender TEXT NOT NULL,
+    text TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    action_chips JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.7 System Vault (الخزنة السرية للمفاتيح المشفرة)
+CREATE TABLE IF NOT EXISTS public.system_vault (
+    id TEXT PRIMARY KEY,
+    user_id UUID,
+    key_name TEXT NOT NULL,
+    key_value TEXT NOT NULL,
+    service_tag TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================================================
+-- 3. ENSURE COLUMNS EXIST (تأكيد الأعمدة في حال كانت الجداول منشأة مسبقاً)
+-- ==============================================================================
 ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS quota TEXT DEFAULT '5 GB';
 ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS assigned_to TEXT;
 ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS webmail_url TEXT DEFAULT 'https://mashawer.com.eg:2096';
@@ -13,7 +131,48 @@ ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS assigned_to 
 ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS description TEXT;
 
--- 1. Insert/Update Projects (المشاريع الثمانية الأساسية)
+-- ==============================================================================
+-- 4. ROW LEVEL SECURITY (RLS) & PUBLIC ACCESS POLICIES
+-- ==============================================================================
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mashweer_emails ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_vault ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Projects Access" ON public.projects;
+CREATE POLICY "Projects Access" ON public.projects FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Providers Access" ON public.service_providers;
+CREATE POLICY "Providers Access" ON public.service_providers FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Contracts Access" ON public.contracts;
+CREATE POLICY "Contracts Access" ON public.contracts FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Mailboxes Access" ON public.mashweer_emails;
+CREATE POLICY "Mailboxes Access" ON public.mashweer_emails FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Tasks Access" ON public.project_tasks;
+CREATE POLICY "Tasks Access" ON public.project_tasks FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Chat Access" ON public.chat_messages;
+CREATE POLICY "Chat Access" ON public.chat_messages FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Vault Access" ON public.system_vault;
+CREATE POLICY "Vault Access" ON public.system_vault FOR ALL TO public USING (true) WITH CHECK (true);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_projects_category ON public.projects(category);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON public.project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_chat_project_id ON public.chat_messages(project_id);
+
+-- ==============================================================================
+-- 5. SEED DATA (تعبئة بيانات المشاريع والمزودين والعقود والإيميلات)
+-- ==============================================================================
+
+-- 5.1 Insert Projects (المشاريع الـ 8 الأساسية)
 INSERT INTO public.projects (id, name, code, category, status, description, repo_url, figma_url, live_url, apk_files, drive_assets, reference_chats, context_hints, db_info)
 VALUES
 (
@@ -158,7 +317,7 @@ ON CONFLICT (id) DO UPDATE SET
     db_info = EXCLUDED.db_info,
     updated_at = NOW();
 
--- 2. Insert/Update Service Providers (مزودي الخدمات والخزنة)
+-- 5.2 Insert Service Providers (خزنة المزودين والاستضافات)
 INSERT INTO public.service_providers (id, name, category, portal_url, username, status, notes, cost_or_plan, official_badge, active_services)
 VALUES
 (
@@ -221,7 +380,7 @@ ON CONFLICT (id) DO UPDATE SET
     active_services = EXCLUDED.active_services,
     updated_at = NOW();
 
--- 3. Insert/Update Contracts (العقود والتسليمات المالية)
+-- 5.3 Insert Contracts (العقود والتسليمات المالية)
 INSERT INTO public.contracts (id, title, provider_name, project_name, status, total_value, currency, payment_terms, deliverables)
 VALUES
 (
@@ -257,7 +416,7 @@ ON CONFLICT (id) DO UPDATE SET
     deliverables = EXCLUDED.deliverables,
     updated_at = NOW();
 
--- 4. Insert/Update Mashweer Employee Emails (إيميلات مشاوير الـ 6)
+-- 5.4 Insert Mashweer Employee Emails (إيميلات مشاوير الستة)
 INSERT INTO public.mashweer_emails (id, address, role_title, department, status, quota, assigned_to, notes)
 VALUES
 (
@@ -330,7 +489,7 @@ ON CONFLICT (id) DO UPDATE SET
     notes = EXCLUDED.notes,
     updated_at = NOW();
 
--- 5. Insert Initial Project Tasks (المهام التشغيلية المبدئية)
+-- 5.5 Insert Tasks (المهام التشغيلية المبدئية)
 INSERT INTO public.project_tasks (id, title, project_id, status, priority, due_date, assigned_to, notes)
 VALUES
 (

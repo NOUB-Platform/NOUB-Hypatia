@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   SlidersHorizontal, 
   Send, 
@@ -13,20 +13,58 @@ import {
   Github,
   GitBranch,
   Copy,
-  Check
+  Check,
+  Database,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
-import { ProjectItem } from '../types';
+import { ProjectItem, TabType } from '../types';
+import { getSupabaseConfig, testSupabaseConnection, resetSupabaseClient } from '../lib/supabase';
 
 interface SettingsTabProps {
   projects: ProjectItem[];
+  onNavigateToTab?: (tab: TabType) => void;
 }
 
-export const SettingsTab: React.FC<SettingsTabProps> = ({ projects }) => {
+export const SettingsTab: React.FC<SettingsTabProps> = ({ projects, onNavigateToTab }) => {
   const [botToken, setBotToken] = useState('');
   const [chatId, setChatId] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
+
+  // Supabase State
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+  const [isTestingSupabase, setIsTestingSupabase] = useState(false);
+  const [supabaseFeedback, setSupabaseFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    const config = getSupabaseConfig();
+    if (config.url) setSupabaseUrl(config.url);
+    if (config.anonKey) setSupabaseAnonKey(config.anonKey);
+  }, []);
+
+  const handleSaveSupabase = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('hypatia_supabase_url', supabaseUrl.trim());
+    localStorage.setItem('hypatia_supabase_anon_key', supabaseAnonKey.trim());
+    resetSupabaseClient();
+    setSupabaseFeedback({ success: true, message: 'تم حفظ إعدادات Supabase بنجاح في المتصفح!' });
+  };
+
+  const handleTestSupabase = async () => {
+    setIsTestingSupabase(true);
+    setSupabaseFeedback(null);
+    try {
+      const res = await testSupabaseConnection();
+      setSupabaseFeedback({ success: res.success, message: res.message });
+    } catch (err: any) {
+      setSupabaseFeedback({ success: false, message: err.message || 'فشل الاتصال بـ Supabase' });
+    } finally {
+      setIsTestingSupabase(false);
+    }
+  };
 
   // Live test input
   const [testMessageText, setTestMessageText] = useState('هيباتيا، ما هي حالة خطوط الربط مع مصر للمقاصة ومشروع نوب سبورتس؟');
@@ -262,6 +300,125 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ projects }) => {
             {testReply}
           </div>
         )}
+      </div>
+
+      {/* Supabase Cloud Connection Card */}
+      <div className="bg-slate-900/70 border border-teal-500/40 rounded-3xl p-5 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-teal-950 border border-teal-500/50 flex items-center justify-center text-teal-300">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                <span>ربط سوبابيز وقواعد البيانات (Supabase Database Cloud)</span>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800 font-mono font-bold">
+                  PostgreSQL
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                قاعدة البيانات السحابية المركزية لتخزين ومزامنة كافة المشاريع والمزودين والعقود والإيميلات.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href="https://supabase.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-bold flex items-center gap-1.5 transition border border-slate-700"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>لوحة Supabase</span>
+            </a>
+
+            {onNavigateToTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('database')}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span>فتح استوديو سوبابيز</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveSupabase} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="space-y-1">
+              <label className="text-[11px] text-slate-300 font-semibold block">
+                Project URL (رابط المشروع من سوبابيز):
+              </label>
+              <input
+                type="text"
+                value={supabaseUrl}
+                onChange={(e) => setSupabaseUrl(e.target.value)}
+                placeholder="https://xxxxxxxxxxxxxx.supabase.co"
+                dir="ltr"
+                className="w-full bg-[#0e1626] border border-slate-700 rounded-xl px-3 py-2 text-xs text-teal-200 font-mono focus:outline-none focus:border-teal-400"
+              />
+              <span className="text-[10px] text-slate-400 block">
+                تجد الرابط في Supabase &gt; Project Settings &gt; Data API &gt; URL
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] text-slate-300 font-semibold block">
+                Anon / Public Key (المفتاح العام):
+              </label>
+              <input
+                type="password"
+                value={supabaseAnonKey}
+                onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                dir="ltr"
+                className="w-full bg-[#0e1626] border border-slate-700 rounded-xl px-3 py-2 text-xs text-teal-200 font-mono focus:outline-none focus:border-teal-400"
+              />
+              <span className="text-[10px] text-slate-400 block">
+                تجد المفتاح في Supabase &gt; Project Settings &gt; Data API &gt; anon / public
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="submit"
+              className="py-2 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition"
+            >
+              حفظ المفاتيح في المتصفح
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTestSupabase}
+              disabled={isTestingSupabase}
+              className="py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isTestingSupabase ? 'animate-spin' : ''}`} />
+              <span>فحص الاتصال المباشر</span>
+            </button>
+          </div>
+
+          {supabaseFeedback && (
+            <div
+              className={`p-3 rounded-2xl border text-xs flex items-center gap-2.5 animate-in fade-in ${
+                supabaseFeedback.success
+                  ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
+                  : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+              }`}
+            >
+              {supabaseFeedback.success ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span>{supabaseFeedback.message}</span>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* GitHub Repository Card */}

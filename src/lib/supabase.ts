@@ -1,6 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Retrieve credentials from localStorage (if configured via UI) or fallback to env vars
+// Fallback credentials for NOUB Hypatia Platform Supabase project
+const DEFAULT_SUPABASE_URL = 'https://sgtpkxckoxkeavfpeitm.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndHBreGNrb3hrZWF2ZnBlaXRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5ODY0NDMsImV4cCI6MjEwNDU2MjQ0M30.CsihBIxZXL_0_QmvYURNFxsXcZ5SlZ-0lTqAClZkRYs';
+
+// Retrieve credentials from localStorage (if configured via UI) or fallback to env vars / defaults
 export const getSupabaseConfig = () => {
   const localUrl = localStorage.getItem('hypatia_supabase_url');
   const localKey = localStorage.getItem('hypatia_supabase_anon_key');
@@ -8,8 +12,8 @@ export const getSupabaseConfig = () => {
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
-  const url = localUrl || envUrl || '';
-  const anonKey = localKey || envKey || '';
+  const url = localUrl || envUrl || DEFAULT_SUPABASE_URL;
+  const anonKey = localKey || envKey || DEFAULT_SUPABASE_ANON_KEY;
 
   return { url, anonKey, isConfigured: Boolean(url && anonKey) };
 };
@@ -205,3 +209,89 @@ export const syncAllDataToSupabase = async (
     };
   }
 };
+
+// Fetch all application data from Supabase
+export const fetchAllDataFromSupabase = async () => {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const [projRes, provRes, conRes, mailRes, taskRes] = await Promise.all([
+      client.from('projects').select('*').order('created_at', { ascending: true }),
+      client.from('service_providers').select('*').order('created_at', { ascending: true }),
+      client.from('contracts').select('*').order('created_at', { ascending: true }),
+      client.from('mashweer_emails').select('*').order('created_at', { ascending: true }),
+      client.from('project_tasks').select('*').order('created_at', { ascending: true }),
+    ]);
+
+    const projects = projRes.data && projRes.data.length > 0 ? projRes.data.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      code: p.code,
+      category: p.category,
+      status: p.status,
+      description: p.description,
+      repoUrl: p.repo_url,
+      figmaUrl: p.figma_url,
+      liveUrl: p.live_url,
+      apkFiles: p.apk_files || [],
+      driveAssets: p.drive_assets || [],
+      referenceChats: p.reference_chats || [],
+      contextHints: p.context_hints || [],
+      dbInfo: p.db_info || {},
+    })) : null;
+
+    const providers = provRes.data && provRes.data.length > 0 ? provRes.data.map((pr: any) => ({
+      id: pr.id,
+      name: pr.name,
+      category: pr.category,
+      portalUrl: pr.portal_url,
+      username: pr.username,
+      status: pr.status,
+      notes: pr.notes,
+      costOrPlan: pr.cost_or_plan,
+      officialBadge: pr.official_badge,
+      activeServices: pr.active_services || [],
+    })) : null;
+
+    const contracts = conRes.data && conRes.data.length > 0 ? conRes.data.map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      providerName: c.provider_name,
+      projectName: c.project_name,
+      status: c.status,
+      totalValue: c.total_value,
+      currency: c.currency,
+      paymentTerms: c.payment_terms,
+      deliverables: c.deliverables || [],
+    })) : null;
+
+    const emails = mailRes.data && mailRes.data.length > 0 ? mailRes.data.map((m: any) => ({
+      id: m.id,
+      address: m.address,
+      roleTitle: m.role_title,
+      department: m.department,
+      status: m.status,
+      quota: m.quota,
+      assignedTo: m.assigned_to,
+      notes: m.notes,
+    })) : null;
+
+    const tasks = taskRes.data && taskRes.data.length > 0 ? taskRes.data.map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      projectId: t.project_id,
+      status: t.status,
+      priority: t.priority,
+      dueDate: t.due_date,
+      assignedTo: t.assigned_to,
+      notes: t.notes,
+    })) : null;
+
+    return { projects, providers, contracts, emails, tasks };
+  } catch (err) {
+    console.error('Failed to fetch from Supabase:', err);
+    return null;
+  }
+};
+

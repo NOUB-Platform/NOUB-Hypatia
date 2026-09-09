@@ -63,30 +63,45 @@ CREATE TABLE IF NOT EXISTS public.contracts (
 -- 4. Domains & Mailboxes (النطاقات والبريد المؤسسي)
 CREATE TABLE IF NOT EXISTS public.mashweer_emails (
     id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+    user_id UUID,
     address TEXT NOT NULL UNIQUE,
     role_title TEXT NOT NULL,
     department TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'مجدول للتفعيل',
+    quota TEXT DEFAULT '5 GB',
+    assigned_to TEXT,
     webmail_url TEXT DEFAULT 'https://mashawer.com.eg:2096',
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure columns exist even if table was created previously
+ALTER TABLE public.mashweer_emails ADD COLUMN IF NOT EXISTS quota TEXT DEFAULT '5 GB';
+ALTER TABLE public.mashweer_emails ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE public.mashweer_emails ADD COLUMN IF NOT EXISTS webmail_url TEXT DEFAULT 'https://mashawer.com.eg:2096';
+ALTER TABLE public.mashweer_emails ADD COLUMN IF NOT EXISTS notes TEXT;
+
 -- 5. Project Tasks & Milestones (المهام التشغيلية ومتابعة المطورين)
 CREATE TABLE IF NOT EXISTS public.project_tasks (
     id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-    project_id TEXT REFERENCES public.projects(id) ON DELETE CASCADE,
+    user_id UUID,
+    project_id TEXT,
     title TEXT NOT NULL,
     description TEXT,
     priority TEXT NOT NULL DEFAULT 'متوسطة',
     status TEXT NOT NULL DEFAULT 'قيد التنفيذ',
     due_date TEXT,
+    assigned_to TEXT,
+    notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure columns exist even if table was created previously
+ALTER TABLE public.project_tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE public.project_tasks ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.project_tasks ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- 6. Chat History (سجل محادثات هيباتيا الذكية)
 CREATE TABLE IF NOT EXISTS public.chat_messages (
@@ -150,6 +165,16 @@ export const SUPABASE_SEED_SQL = `-- ===========================================
 -- NOUB Platform - Hypatia Initial Data Seed (تعبئة المشاريع والمزودين والإيميلات)
 -- Run this in Supabase SQL Editor to instantly populate all tables!
 -- ==============================================================================
+
+-- 0. Ensure columns exist even if tables were created with an older schema
+ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS quota TEXT DEFAULT '5 GB';
+ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS webmail_url TEXT DEFAULT 'https://mashawer.com.eg:2096';
+ALTER TABLE IF EXISTS public.mashweer_emails ADD COLUMN IF NOT EXISTS notes TEXT;
+
+ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.project_tasks ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- 1. Insert Projects (المشاريع الـ 8 الأساسية)
 INSERT INTO public.projects (id, name, code, category, status, description, repo_url, figma_url, live_url, apk_files, drive_assets, reference_chats, context_hints, db_info)
