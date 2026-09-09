@@ -194,8 +194,8 @@ export const TasksTab: React.FC<TasksTabProps> = ({
         </form>
       )}
 
-      {/* Filter Tabs & AI Helper */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1">
+      {/* Filter Tabs & AI Helper - Clean flex wrap */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-2xl border border-slate-800 text-xs shrink-0">
           <button
             onClick={() => setFilter('all')}

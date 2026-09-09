@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Layers, 
   ChevronDown, 
-  ExternalLink, 
   Plus, 
   Check, 
   Settings, 
-  Smartphone,
-  Bot,
-  Sparkles,
-  Mic,
-  Github
+  Mic
 } from 'lucide-react';
 import { ProjectItem } from '../types';
 
@@ -135,46 +129,22 @@ export const MiniAppHeader: React.FC<MiniAppHeaderProps> = ({
           )}
         </div>
 
-        {/* Right / End: Quick Shortcuts */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right / End: Clean, uncluttered actions */}
+        <div className="flex items-center gap-2 shrink-0">
           {onOpenVoiceCommand && (
             <button
               onClick={onOpenVoiceCommand}
               title="أمر صوتي لهيباتيا (Voice Command)"
-              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-xs transition flex items-center gap-1 shadow-md"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md active:scale-95"
             >
-              <Mic className="w-3.5 h-3.5" />
+              <Mic className="w-4 h-4" />
               <span className="hidden sm:inline">أمر صوتي</span>
             </button>
           )}
 
-          {activeProject.figmaUrl && (
-            <a
-              href={activeProject.figmaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="فتح رابط فيجما"
-              className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-[10px] hidden md:inline font-semibold">فيجما</span>
-            </a>
-          )}
-
-          <a
-            href="https://github.com/NOUB-Platform/NOUB-Hypatia"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="مستودع كود هيباتيا الرسمي على GitHub (NOUB-Platform/NOUB-Hypatia)"
-            className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-600 text-slate-300 hover:text-white transition flex items-center gap-1.5"
-          >
-            <Github className="w-3.5 h-3.5 text-teal-400" />
-            <span className="text-[10px] hidden md:inline font-mono font-semibold">GitHub</span>
-          </a>
-
           <button
             onClick={onOpenSettings}
-            title="الإعدادات ومفاتيح تيليجرام والمستودع"
+            title="الإعدادات والربط السحابي"
             className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition"
           >
             <Settings className="w-4 h-4" />

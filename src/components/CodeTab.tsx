@@ -210,8 +210,8 @@ function calculateTripFare(baseFare, distanceKm, surgeMultiplier, couponDiscount
                 className="w-full bg-[#10192a] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-teal-400"
               />
 
-              {/* Goal Presets */}
-              <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar pb-1">
+              {/* Goal Presets - Clean Wrap, No Horizontal Scrolling */}
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 <span className="text-[10px] text-teal-300 font-bold shrink-0">اقتراحات سريعة:</span>
                 {goalPresets.map((preset, idx) => (
                   <button

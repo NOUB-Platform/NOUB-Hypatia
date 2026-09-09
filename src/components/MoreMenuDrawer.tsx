@@ -15,7 +15,9 @@ import {
   ShieldAlert,
   Shield,
   Key,
-  Github
+  Github,
+  FileCheck2,
+  Code2
 } from 'lucide-react';
 import { TabType, ProjectItem } from '../types';
 
@@ -40,20 +42,28 @@ export const MoreMenuDrawer: React.FC<MoreMenuDrawerProps> = ({
 
   const menuItems = [
     {
-      id: 'providers' as TabType,
-      title: 'خزنة مزودي الخدمات والاعتمادات (Vault)',
-      description: 'المصرية لتكنولوجيا المعلومات، WE، برودنت، قيمة تك، والمفاتيح',
-      icon: Shield,
-      badge: 'المرجع المركزي',
+      id: 'contracts' as TabType,
+      title: 'العقود والتسليمات (Contracts)',
+      description: 'عقود قيمة تك ومراحل التطوير والدفعات المالية والشروط الجزائية',
+      icon: FileCheck2,
+      badge: 'جدول العقود',
       color: 'text-teal-400 bg-teal-950 border-teal-800/80',
     },
     {
       id: 'mashweer_emails' as TabType,
-      title: 'إيميلات ونطاق مشاوير (mashweer.com.eg)',
-      description: 'الـ 6 إيميلات المحجوزة على Zoho Lite عبر المصرية EC (الاستلام غداً)',
+      title: 'إيميلات ونطاق مشاوير (mashawer.com.eg)',
+      description: 'الـ 6 إيميلات المحجوزة عبر المصرية EC (الاستلام غداً)',
       icon: Mail,
-      badge: '6 إيميلات زوهو',
+      badge: '6 إيميلات',
       color: 'text-cyan-400 bg-cyan-950 border-cyan-800/80',
+    },
+    {
+      id: 'code' as TabType,
+      title: 'مستودعات الأكواد و GitHub',
+      description: 'مستودع هيباتيا الرسمي NOUB-Hypatia وريبو التطبيقات التابعة',
+      icon: Code2,
+      badge: 'GitHub Repos',
+      color: 'text-indigo-400 bg-indigo-950 border-indigo-800/80',
     },
     {
       id: 'tasks' as TabType,
@@ -62,14 +72,6 @@ export const MoreMenuDrawer: React.FC<MoreMenuDrawerProps> = ({
       icon: CheckSquare,
       badge: 'Tasks',
       color: 'text-amber-400 bg-amber-950 border-amber-800/80',
-    },
-    {
-      id: 'database' as TabType,
-      title: 'قواعد البيانات (Supabase & PostgreSQL)',
-      description: 'هندسة الجداول، استعلامات SQL الفورية، ومفاتيح الربط',
-      icon: Database,
-      badge: 'PostGIS / Supabase',
-      color: 'text-emerald-400 bg-emerald-950 border-emerald-800/80',
     },
     {
       id: 'tools' as TabType,
@@ -84,7 +86,7 @@ export const MoreMenuDrawer: React.FC<MoreMenuDrawerProps> = ({
       title: 'إعدادات النظام والنموذج ومفاتيح الـ AI',
       description: 'تخصيص نموذج الذكاء الاصطناعي ومفاتيح التشغيل',
       icon: SlidersHorizontal,
-      badge: 'Gemini 2.5',
+      badge: 'Gemini 3.8',
       color: 'text-purple-400 bg-purple-950 border-purple-800/80',
     },
   ];

@@ -2,10 +2,9 @@ import React from 'react';
 import { 
   Bot, 
   Smartphone, 
-  FileCheck2, 
-  Code2, 
-  Menu,
-  Sparkles
+  ShieldCheck, 
+  Database, 
+  Menu
 } from 'lucide-react';
 import { TabType } from '../types';
 
@@ -24,13 +23,12 @@ export const MiniAppBottomBar: React.FC<MiniAppBottomBarProps> = ({
   onOpenMore,
   isMoreOpen = false,
   projectsCount = 8,
-  contractsCount = 3,
 }) => {
-  const isMoreTab = ['database', 'tools', 'mashweer_emails', 'tasks', 'settings'].includes(currentTab);
+  const isMoreTab = ['contracts', 'code', 'tools', 'mashweer_emails', 'tasks', 'settings'].includes(currentTab);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 shadow-2xl safe-area-pb">
-      <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-between px-2 py-1.5 relative">
+      <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-between px-3 py-1.5 relative">
         
         {/* 1. Projects Tab */}
         <button
@@ -55,23 +53,20 @@ export const MiniAppBottomBar: React.FC<MiniAppBottomBarProps> = ({
           )}
         </button>
 
-        {/* 2. Contracts & Deliverables Tab */}
+        {/* 2. Providers Vault Tab */}
         <button
-          onClick={() => onSelectTab('contracts')}
+          onClick={() => onSelectTab('providers')}
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all ${
-            currentTab === 'contracts'
+            currentTab === 'providers'
               ? 'text-teal-400 font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <div className="relative">
-            <FileCheck2 className={`w-5 h-5 transition-transform ${currentTab === 'contracts' ? 'stroke-[2.5px] scale-110' : 'stroke-[1.8px]'}`} />
-            <span className="absolute -top-1 -right-2 px-1 py-0.1 rounded-full bg-teal-950 border border-teal-800 text-teal-300 font-mono font-bold text-[9px] min-w-[14px] text-center">
-              {contractsCount}
-            </span>
+            <ShieldCheck className={`w-5 h-5 transition-transform ${currentTab === 'providers' ? 'stroke-[2.5px] scale-110' : 'stroke-[1.8px]'}`} />
           </div>
-          <span className="text-[10px] mt-1 whitespace-nowrap">العقود</span>
-          {currentTab === 'contracts' && (
+          <span className="text-[10px] mt-1 whitespace-nowrap">المزودين</span>
+          {currentTab === 'providers' && (
             <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-0.5"></span>
           )}
         </button>
@@ -88,7 +83,6 @@ export const MiniAppBottomBar: React.FC<MiniAppBottomBarProps> = ({
             }`}
           >
             <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-teal-400 relative overflow-hidden group">
-              {/* Radial glow highlight */}
               <div className="absolute inset-0 bg-gradient-to-b from-teal-500/20 to-transparent opacity-60"></div>
               
               <Bot className={`w-6 h-6 z-10 transition-transform ${currentTab === 'chat' ? 'text-teal-300 scale-110' : 'text-teal-400'}`} />
@@ -102,25 +96,25 @@ export const MiniAppBottomBar: React.FC<MiniAppBottomBarProps> = ({
           </span>
         </div>
 
-        {/* 4. Code & Architecture Tab */}
+        {/* 4. Supabase Studio Tab */}
         <button
-          onClick={() => onSelectTab('code')}
+          onClick={() => onSelectTab('database')}
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all ${
-            currentTab === 'code'
+            currentTab === 'database'
               ? 'text-teal-400 font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <div className="relative">
-            <Code2 className={`w-5 h-5 transition-transform ${currentTab === 'code' ? 'stroke-[2.5px] scale-110' : 'stroke-[1.8px]'}`} />
+            <Database className={`w-5 h-5 transition-transform ${currentTab === 'database' ? 'stroke-[2.5px] scale-110' : 'stroke-[1.8px]'}`} />
           </div>
-          <span className="text-[10px] mt-1 whitespace-nowrap">الأكواد</span>
-          {currentTab === 'code' && (
+          <span className="text-[10px] mt-1 whitespace-nowrap">سوبابيز</span>
+          {currentTab === 'database' && (
             <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-0.5"></span>
           )}
         </button>
 
-        {/* 5. More Menu / Hamburger Tab */}
+        {/* 5. More Menu Tab */}
         <button
           onClick={onOpenMore}
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all ${

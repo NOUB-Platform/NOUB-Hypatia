@@ -333,8 +333,8 @@ export const ProvidersVaultTab: React.FC<ProvidersVaultTabProps> = ({
           />
         </div>
 
-        {/* Categories Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        {/* Categories Bar - Clean Wrap, No Horizontal Scrolling */}
+        <div className="flex items-center gap-1.5 flex-wrap text-xs">
           {categories.map((cat) => (
             <button
               key={cat}
