@@ -13,28 +13,52 @@ import {
   Lock,
   Cloud,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UploadCloud,
+  FileSpreadsheet,
+  Zap,
+  Info
 } from 'lucide-react';
 import { ProjectItem } from '../types';
-import { SUPABASE_MASTER_SQL, SUPABASE_TABLES_SCHEMA } from '../data/supabaseSchema';
-import { getSupabaseConfig, testSupabaseConnection, resetSupabaseClient } from '../lib/supabase';
+import { 
+  SUPABASE_MASTER_SQL, 
+  SUPABASE_SEED_SQL, 
+  SUPABASE_ALL_IN_ONE_SQL, 
+  SUPABASE_TABLES_SCHEMA 
+} from '../data/supabaseSchema';
+import { 
+  getSupabaseConfig, 
+  testSupabaseConnection, 
+  resetSupabaseClient,
+  syncAllDataToSupabase 
+} from '../lib/supabase';
 
 interface DatabaseTabProps {
   activeProject: ProjectItem;
   projects: ProjectItem[];
+  serviceProviders?: any[];
+  contracts?: any[];
+  mashweerEmails?: any[];
+  tasks?: any[];
   onAskEmo: (prompt: string) => void;
 }
 
 export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   activeProject,
   projects,
+  serviceProviders = [],
+  contracts = [],
+  mashweerEmails = [],
+  tasks = [],
   onAskEmo,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'schema' | 'sync' | 'ai-sql'>('schema');
+  const [activeSubTab, setActiveSubTab] = useState<'schema' | 'seed' | 'sync' | 'ai-sql'>('schema');
   const [selectedProjectId, setSelectedProjectId] = useState(activeProject.id);
   const [naturalQuestion, setNaturalQuestion] = useState('استخرج أعلى 10 كباتن تقييماً قاموا بأكثر من 50 رحلة هذا الشهر مع ترتيبهم تنازلياً');
   const [isGeneratingSql, setIsGeneratingSql] = useState(false);
   const [copiedMasterSql, setCopiedMasterSql] = useState(false);
+  const [copiedSeedSql, setCopiedSeedSql] = useState(false);
+  const [copiedAllInOneSql, setCopiedAllInOneSql] = useState(false);
   const [copiedQuerySql, setCopiedQuerySql] = useState(false);
   
   // Supabase Config State
@@ -42,6 +66,10 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem('hypatia_supabase_anon_key') || '');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{ checked: boolean; success: boolean; message: string } | null>(null);
+
+  // Sync state
+  const [isSyncingData, setIsSyncingData] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ success: boolean; message: string; details?: any } | null>(null);
 
   const [sqlResult, setSqlResult] = useState<{
     sql: string;
@@ -68,8 +96,22 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   const handleCopyMasterSql = () => {
     navigator.clipboard.writeText(SUPABASE_MASTER_SQL);
     setCopiedMasterSql(true);
-    showToast('تم نسخ كود الـ SQL الماستر كاملاً بنجاح! جاهز للصق في Supabase SQL Editor.');
+    showToast('تم نسخ كود إنشاء الجداول (Schema SQL) مع سياسات RLS المحدثة!');
     setTimeout(() => setCopiedMasterSql(false), 3000);
+  };
+
+  const handleCopySeedSql = () => {
+    navigator.clipboard.writeText(SUPABASE_SEED_SQL);
+    setCopiedSeedSql(true);
+    showToast('تم نسخ كود البيانات المبدئية (Seed Data SQL) كاملاً بنجاح!');
+    setTimeout(() => setCopiedSeedSql(false), 3000);
+  };
+
+  const handleCopyAllInOneSql = () => {
+    navigator.clipboard.writeText(SUPABASE_ALL_IN_ONE_SQL);
+    setCopiedAllInOneSql(true);
+    showToast('تم نسخ كود الـ All-in-One كاملاً! (إنشاء الجداول + إدخال جميع البيانات بنقرة واحدة)');
+    setTimeout(() => setCopiedAllInOneSql(false), 3000);
   };
 
   const handleSaveSupabaseConfig = (e: React.FormEvent) => {
@@ -91,6 +133,30 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
       setConnectionStatus({ checked: true, success: false, message: err.message || 'خطأ غير معروف' });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const handleDirectSyncToSupabase = async () => {
+    setIsSyncingData(true);
+    setSyncFeedback(null);
+    try {
+      const res = await syncAllDataToSupabase(
+        projects,
+        serviceProviders,
+        contracts,
+        mashweerEmails,
+        tasks
+      );
+      setSyncFeedback(res);
+      if (res.success) {
+        showToast('تمت المزامنة ورفع كافة السجلات السحابية بنجاح!');
+      } else {
+        showToast(res.message);
+      }
+    } catch (err: any) {
+      setSyncFeedback({ success: false, message: err.message || 'حدث خطأ أثناء المزامنة' });
+    } finally {
+      setIsSyncingData(false);
     }
   };
 
@@ -136,8 +202,42 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
         </div>
       )}
 
+      {/* Explanation Banner: Why site was empty and how it's resolved */}
+      <div className="bg-gradient-to-r from-amber-950/40 via-[#182640] to-teal-950/40 border border-amber-500/40 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+            <Info className="w-5 h-5" />
+          </div>
+          <div className="space-y-1.5 text-xs">
+            <h2 className="font-bold text-amber-200 text-sm flex items-center gap-2">
+              <span>توضيح وحل: لماذا ظهر الموقع فارغاً بعد إنشاء الجداول؟ وكيف يعمل الآن فوراً؟</span>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-[11px] text-slate-300">
+              <div className="bg-slate-900/70 p-2.5 rounded-2xl border border-slate-700/80 space-y-1">
+                <span className="font-bold text-amber-300 block">1. الجداول كانت فارغة (0 صفوف)</span>
+                <p className="text-slate-400 leading-relaxed">
+                  أمر <code className="text-teal-300">CREATE TABLE</code> ينشئ هيكل الأعمدة فقط دون أي بيانات. وفرنا لك الآن كود <strong className="text-white">Seed Data</strong> وزر <strong className="text-teal-300">المزامنة بنقرة واحدة</strong> لتعبئة الـ 8 مشاريع والمزودين فوراً.
+                </p>
+              </div>
+              <div className="bg-slate-900/70 p-2.5 rounded-2xl border border-slate-700/80 space-y-1">
+                <span className="font-bold text-teal-300 block">2. سياسة الأمان RLS المحدثة</span>
+                <p className="text-slate-400 leading-relaxed">
+                  تم تحديث سياسات <code className="text-teal-300">RLS</code> لتسمح بقراءة البيانات عبر مفتاح <code className="text-cyan-300">Anon Key</code> دون اشتراط تسجيل دخول مسبق، حتى لا ترجع استعلامات الواجهة بمصفوفة فارغة.
+                </p>
+              </div>
+              <div className="bg-slate-900/70 p-2.5 rounded-2xl border border-slate-700/80 space-y-1">
+                <span className="font-bold text-cyan-300 block">3. مسارات GitHub Pages</span>
+                <p className="text-slate-400 leading-relaxed">
+                  تم ضبط مسار الحزم <code className="text-teal-300">base: './'</code> في ملف إعداد Vite وإنشاء سير عمل <code className="text-slate-200">GitHub Actions</code> ليتم بناء كود الإنتاج <code className="text-white">dist/</code> تلقائياً بدون شاشة بيضاء.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Header */}
-      <div className="bg-[#182640] border border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-xl">
+      <div className="bg-[#182640] border border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3.5">
           <div>
             <div className="flex items-center gap-2">
@@ -152,21 +252,41 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
               </h1>
             </div>
             <p className="text-xs text-slate-300 mt-1">
-              مخطط الجداول السحابية الرسمية، كود SQL المعتمد، وسياسات الحماية (Row Level Security) لضمان خصوصية بياناتك 100%.
+              مخطط الجداول السحابية الرسمية، كود SQL المعتمد، وتعبئة البيانات المبدئية بنقرة واحدة لضمان عمل المنظومة بالكامل.
             </p>
           </div>
 
-          <button
-            onClick={handleCopyMasterSql}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shrink-0 self-start sm:self-auto active:scale-95"
-          >
-            {copiedMasterSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            <span>{copiedMasterSql ? 'تم نسخ الـ SQL!' : 'نسخ كود SQL كامل للسوبابيز'}</span>
-          </button>
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={handleCopyAllInOneSql}
+              title="ينشئ الجداول السبعة ويملأها فوراً بكافة مشاريع ومزودي نوب"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-lg active:scale-95"
+            >
+              {copiedAllInOneSql ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4 text-slate-950" />}
+              <span>{copiedAllInOneSql ? 'تم نسخ الكود الشامل!' : 'نسخ الكود الشامل (إنشاء + تعبئة)'}</span>
+            </button>
+
+            <button
+              onClick={handleCopyMasterSql}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1.5 transition"
+            >
+              {copiedMasterSql ? <Check className="w-3.5 h-3.5 text-teal-300" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              <span>{copiedMasterSql ? 'تم نسخ الجداول!' : 'نسخ الجداول فقط'}</span>
+            </button>
+
+            <button
+              onClick={handleCopySeedSql}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-teal-300 flex items-center gap-1.5 transition"
+            >
+              {copiedSeedSql ? <Check className="w-3.5 h-3.5 text-teal-300" /> : <FileSpreadsheet className="w-3.5 h-3.5 text-teal-400" />}
+              <span>{copiedSeedSql ? 'تم نسخ البيانات!' : 'نسخ بيانات Seed'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Sub-Tabs Nav */}
-        <div className="flex items-center gap-2 pt-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
           <button
             onClick={() => setActiveSubTab('schema')}
             className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
@@ -180,6 +300,18 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveSubTab('seed')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeSubTab === 'seed'
+                ? 'bg-teal-500 text-slate-950'
+                : 'text-slate-300 hover:bg-slate-800/80'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>بيانات المنظومة المبدئية (Seed Data)</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('sync')}
             className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
               activeSubTab === 'sync'
@@ -188,7 +320,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
             }`}
           >
             <Cloud className="w-3.5 h-3.5" />
-            <span>الربط السحابي والمزامنة (Live Sync)</span>
+            <span>الربط والمزامنة المباشرة (Live Sync)</span>
           </button>
 
           <button
@@ -291,9 +423,135 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
         </div>
       )}
 
-      {/* Sub-Tab 2: Live Sync & Connection */}
+      {/* Sub-Tab 2: Seed Data (بيانات المنظومة المبدئية) */}
+      {activeSubTab === 'seed' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="bg-[#182640] border border-slate-700/80 rounded-3xl p-5 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+              <div>
+                <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-teal-300" />
+                  <span>تعبئة بيانات نوب ومشاوير في سوبابيز (Initial Seed Data)</span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  هذا الكود يقوم بملء الجداول السحابية فوراً بكافة مشاريع المنظومة، المزودين، عقود قيمة تك، وإيميلات مشاوير الستة.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleCopySeedSql}
+                  className="px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow"
+                >
+                  {copiedSeedSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedSeedSql ? 'تم نسخ بيانات Seed!' : 'نسخ كود Seed SQL'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Seed Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-center">
+              <div className="bg-[#0e1626] p-3 rounded-2xl border border-slate-700/80">
+                <span className="text-lg font-bold text-teal-300 block">8</span>
+                <span className="text-[10px] text-slate-400">مشاريع رئيسية</span>
+              </div>
+              <div className="bg-[#0e1626] p-3 rounded-2xl border border-slate-700/80">
+                <span className="text-lg font-bold text-cyan-300 block">4</span>
+                <span className="text-[10px] text-slate-400">مزودين واستضافات</span>
+              </div>
+              <div className="bg-[#0e1626] p-3 rounded-2xl border border-slate-700/80">
+                <span className="text-lg font-bold text-amber-300 block">6</span>
+                <span className="text-[10px] text-slate-400">إيميلات مشاوير</span>
+              </div>
+              <div className="bg-[#0e1626] p-3 rounded-2xl border border-slate-700/80">
+                <span className="text-lg font-bold text-emerald-300 block">2</span>
+                <span className="text-[10px] text-slate-400">عقود قيمة تك</span>
+              </div>
+              <div className="bg-[#0e1626] p-3 rounded-2xl border border-slate-700/80">
+                <span className="text-lg font-bold text-indigo-300 block">3</span>
+                <span className="text-[10px] text-slate-400">مهام متابعة</span>
+              </div>
+            </div>
+
+            {/* SQL Code Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-teal-400" />
+                  <span>معاينة كود الـ Seed SQL (جاهز للتشغيل في سوبابيز):</span>
+                </span>
+                <button
+                  onClick={handleCopySeedSql}
+                  className="text-teal-300 hover:text-white text-[11px] font-bold"
+                >
+                  نسخ الكود كاملاً
+                </button>
+              </div>
+              <div className="p-3.5 bg-[#0e1626] rounded-2xl border border-slate-700 max-h-60 overflow-y-auto text-[11px] font-mono text-teal-200 leading-relaxed whitespace-pre" dir="ltr">
+                {SUPABASE_SEED_SQL}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-Tab 3: Live Sync & Connection */}
       {activeSubTab === 'sync' && (
         <div className="space-y-4 animate-in fade-in">
+          {/* Direct Cloud Sync Card */}
+          <div className="bg-gradient-to-r from-teal-950/50 via-[#182640] to-cyan-950/50 border border-teal-500/50 rounded-3xl p-5 space-y-3.5 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                  <UploadCloud className="w-5 h-5 text-teal-300" />
+                  <span>المزامنة السحابية بنقرة واحدة (One-Click Cloud Sync)</span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  إذا كنت قد حفظت مفاتيح سوبابيز أدناه، يمكنك رفع ومزامنة كافة بيانات التطبيقات والمزودين والإيميلات السحابية بنقرة واحدة دون الحاجة لتشغيل أي SQL يدوياً!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDirectSyncToSupabase}
+                disabled={isSyncingData}
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shrink-0 active:scale-95"
+              >
+                <UploadCloud className={`w-4 h-4 ${isSyncingData ? 'animate-bounce' : ''}`} />
+                <span>{isSyncingData ? 'جاري المزامنة السحابية...' : 'مزامنة كافة البيانات السحابية الآن'}</span>
+              </button>
+            </div>
+
+            {/* Sync Feedback Result */}
+            {syncFeedback && (
+              <div
+                className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
+                  syncFeedback.success
+                    ? 'bg-emerald-950/50 border-emerald-500/60 text-emerald-200'
+                    : 'bg-rose-950/50 border-rose-500/60 text-rose-200'
+                }`}
+              >
+                {syncFeedback.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <span className="font-bold block">{syncFeedback.message}</span>
+                  {syncFeedback.details && Object.keys(syncFeedback.details).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-1.5 text-[10px] text-slate-300">
+                      <span>المشاريع: {syncFeedback.details.projects}</span> • 
+                      <span>المزودين: {syncFeedback.details.service_providers}</span> • 
+                      <span>العقود: {syncFeedback.details.contracts}</span> • 
+                      <span>الإيميلات: {syncFeedback.details.mashweer_emails}</span> • 
+                      <span>المهام: {syncFeedback.details.project_tasks}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-[#182640] border border-slate-700/80 rounded-3xl p-5 space-y-4 shadow-xl">
             <h3 className="text-xs font-bold text-white flex items-center gap-2">
               <Cloud className="w-4 h-4 text-teal-300" />

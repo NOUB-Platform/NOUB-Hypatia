@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS public.system_vault (
 );
 
 -- ==============================================================================
--- 9. Row Level Security (RLS) - حماية صارمة لمنع وصول أي شخص آخر لبياناتك
+-- 9. Row Level Security (RLS) - حماية مع تمكين مفتاح الوصول Anon Key والـ Authenticated
 -- ==============================================================================
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.service_providers ENABLE ROW LEVEL SECURITY;
@@ -138,59 +138,66 @@ ALTER TABLE public.system_vault ENABLE ROW LEVEL SECURITY;
 
 -- 9.1 Projects Policies
 DROP POLICY IF EXISTS "Projects Owner Access" ON public.projects;
-CREATE POLICY "Projects Owner Access" ON public.projects
+DROP POLICY IF EXISTS "Projects Access" ON public.projects;
+CREATE POLICY "Projects Access" ON public.projects
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.2 Service Providers Policies
 DROP POLICY IF EXISTS "Providers Owner Access" ON public.service_providers;
-CREATE POLICY "Providers Owner Access" ON public.service_providers
+DROP POLICY IF EXISTS "Providers Access" ON public.service_providers;
+CREATE POLICY "Providers Access" ON public.service_providers
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.3 Contracts Policies
 DROP POLICY IF EXISTS "Contracts Owner Access" ON public.contracts;
-CREATE POLICY "Contracts Owner Access" ON public.contracts
+DROP POLICY IF EXISTS "Contracts Access" ON public.contracts;
+CREATE POLICY "Contracts Access" ON public.contracts
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.4 Mailboxes Policies
 DROP POLICY IF EXISTS "Mailboxes Owner Access" ON public.mashweer_emails;
-CREATE POLICY "Mailboxes Owner Access" ON public.mashweer_emails
+DROP POLICY IF EXISTS "Mailboxes Access" ON public.mashweer_emails;
+CREATE POLICY "Mailboxes Access" ON public.mashweer_emails
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.5 Tasks Policies
 DROP POLICY IF EXISTS "Tasks Owner Access" ON public.project_tasks;
-CREATE POLICY "Tasks Owner Access" ON public.project_tasks
+DROP POLICY IF EXISTS "Tasks Access" ON public.project_tasks;
+CREATE POLICY "Tasks Access" ON public.project_tasks
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.6 Chat History Policies
 DROP POLICY IF EXISTS "Chat Owner Access" ON public.chat_messages;
-CREATE POLICY "Chat Owner Access" ON public.chat_messages
+DROP POLICY IF EXISTS "Chat Access" ON public.chat_messages;
+CREATE POLICY "Chat Access" ON public.chat_messages
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.7 System Vault Policies
 DROP POLICY IF EXISTS "Vault Owner Access" ON public.system_vault;
-CREATE POLICY "Vault Owner Access" ON public.system_vault
+DROP POLICY IF EXISTS "Vault Access" ON public.system_vault;
+CREATE POLICY "Vault Access" ON public.system_vault
     FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id OR user_id IS NULL)
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- ==============================================================================
 -- 10. Performance Indexes

@@ -501,6 +501,10 @@ export default function App() {
             <DatabaseTab
               activeProject={activeProject}
               projects={projects}
+              serviceProviders={serviceProviders}
+              contracts={contracts}
+              mashweerEmails={mashweerEmails}
+              tasks={tasks}
               onAskEmo={(prompt) => handleAskHypatiaFromAnywhere(prompt, activeProject)}
             />
           )}
