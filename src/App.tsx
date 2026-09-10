@@ -139,7 +139,20 @@ export default function App() {
     return INITIAL_SERVICE_PROVIDERS;
   });
 
-  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || INITIAL_PROJECTS[0];
+  const fallbackProject: ProjectItem = INITIAL_PROJECTS[0] || {
+    id: 'proj-noub-sports',
+    name: 'نوب سبورتس (NOUB Sports)',
+    code: 'NOUB-SPORTS',
+    category: 'نوب NOUB',
+    status: 'قيد التطوير',
+    description: 'منظومة الأنشطة والمتابعة الرياضية والفروسية والسباحة وإدارة المنافسات وربط البيانات الحية.',
+    apkFiles: [],
+    driveAssets: [],
+    referenceChats: [],
+    contextHints: [],
+    dbInfo: { type: 'PostgreSQL / Supabase', tables: [], notes: '' }
+  };
+  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || fallbackProject;
 
   // Save changes to localStorage
   useEffect(() => {
@@ -573,8 +586,32 @@ export default function App() {
       <VoiceCommandModal
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
-        onExecuteCommand={handleVoiceAction}
-        activeProjectName={activeProject.name}
+        projects={projects}
+        activeProject={activeProject}
+        providers={serviceProviders}
+        onAddTask={handleAddTask}
+        onAddProviderTask={(providerId, taskTitle, contact) => {
+          setServiceProviders((prev) =>
+            prev.map((p) => {
+              if (p.id === providerId) {
+                const newTask = {
+                  id: `task-${Date.now()}`,
+                  title: taskTitle,
+                  dueDate: '2026-09-10',
+                  priority: 'عاجل' as const,
+                  status: 'معلقة' as const,
+                  assignedContact: contact,
+                };
+                return { ...p, tasks: [newTask, ...p.tasks] };
+              }
+              return p;
+            })
+          );
+          setCurrentTab('providers');
+        }}
+        onSelectProject={(id) => setActiveProjectId(id)}
+        onSelectTab={setCurrentTab}
+        onAskHypatia={(prompt) => handleAskHypatiaFromAnywhere(prompt, activeProject)}
       />
     </div>
   );

@@ -1,4 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { 
+  ProjectItem, 
+  ServiceProviderItem, 
+  ContractDeliverable, 
+  MashweerEmployeeEmail, 
+  ProjectTask 
+} from '../types';
 
 // Fallback credentials for NOUB Hypatia Platform Supabase project
 const DEFAULT_SUPABASE_URL = 'https://sgtpkxckoxkeavfpeitm.supabase.co';
@@ -72,11 +79,11 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
 
 // Sync and upload all application data to Supabase tables
 export const syncAllDataToSupabase = async (
-  projects: any[],
-  providers: any[],
-  contracts: any[],
-  emails: any[],
-  tasks: any[]
+  projects: ProjectItem[],
+  providers: ServiceProviderItem[],
+  contracts: ContractDeliverable[],
+  emails: MashweerEmployeeEmail[],
+  tasks: ProjectTask[]
 ): Promise<{ success: boolean; message: string; details: Record<string, number> }> => {
   const client = getSupabaseClient();
   if (!client) {
@@ -103,7 +110,6 @@ export const syncAllDataToSupabase = async (
         description: p.description || '',
         repo_url: p.repoUrl || '',
         figma_url: p.figmaUrl || '',
-        live_url: p.liveUrl || '',
         apk_files: p.apkFiles || [],
         drive_assets: p.driveAssets || [],
         reference_chats: p.referenceChats || [],
@@ -123,13 +129,17 @@ export const syncAllDataToSupabase = async (
         id: pr.id,
         name: pr.name,
         category: pr.category || 'عام',
-        portal_url: pr.portalUrl || '',
-        username: pr.username || '',
-        status: pr.status || 'نشط',
-        notes: pr.notes || '',
+        website: pr.website || '',
+        contact_persons: pr.contactPersons || [],
+        subscription_date: pr.subscriptionDate || '',
+        renewal_date: pr.renewalDate || '',
         cost_or_plan: pr.costOrPlan || '',
         official_badge: pr.officialBadge || '',
         active_services: pr.activeServices || [],
+        credentials: pr.credentials || [],
+        tasks: pr.tasks || [],
+        linked_apps: pr.linkedApps || [],
+        notes: pr.notes || '',
         updated_at: new Date().toISOString(),
       }));
 
@@ -142,14 +152,17 @@ export const syncAllDataToSupabase = async (
     if (contracts && contracts.length > 0) {
       const formattedContracts = contracts.map(c => ({
         id: c.id,
-        title: c.title,
-        provider_name: c.providerName || '',
-        project_name: c.projectName || '',
-        status: c.status || 'قيد التنفيذ',
-        total_value: c.totalValue || '',
-        currency: c.currency || 'EGP',
-        payment_terms: c.paymentTerms || '',
-        deliverables: c.deliverables || [],
+        app_name: c.appName || '',
+        app_code: c.appCode || '',
+        developer_name: c.developerName || '',
+        contract_status: c.contractStatus || 'جاري العمل',
+        target_delivery_date: c.targetDeliveryDate || '',
+        source_code_repo: c.sourceCodeRepo || '',
+        agreed_price: c.agreedPrice || '',
+        paid_amount: c.paidAmount || '',
+        remaining_amount: c.remainingAmount || '',
+        checklist: c.checklist || [],
+        notes: c.notes || '',
         updated_at: new Date().toISOString(),
       }));
 
@@ -162,12 +175,13 @@ export const syncAllDataToSupabase = async (
     if (emails && emails.length > 0) {
       const formattedEmails = emails.map(m => ({
         id: m.id,
-        address: m.address,
-        role_title: m.roleTitle || '',
-        department: m.department || '',
-        status: m.status || 'نشط',
-        quota: m.quota || '5 GB',
-        assigned_to: m.assignedTo || '',
+        employee_name: m.employeeName || '',
+        role: m.role || '',
+        email_address: m.emailAddress || '',
+        status: m.status || 'تم الطلب - موعد الاستلام غداً',
+        provider: m.provider || 'Zoho Lite (المصرية لتكنولوجيا المعلومات)',
+        created_at: m.createdAt || new Date().toISOString().split('T')[0],
+        delivery_date: m.deliveryDate || '',
         notes: m.notes || '',
         updated_at: new Date().toISOString(),
       }));
@@ -181,13 +195,14 @@ export const syncAllDataToSupabase = async (
     if (tasks && tasks.length > 0) {
       const formattedTasks = tasks.map(t => ({
         id: t.id,
-        title: t.title,
         project_id: t.projectId || '',
-        status: t.status || 'قيد التنفيذ',
-        priority: t.priority || 'عادية',
-        due_date: t.dueDate || '',
-        assigned_to: t.assignedTo || '',
+        title: t.title,
+        description: t.description || '',
         notes: t.notes || '',
+        priority: t.priority || 'عاجل',
+        status: t.status || 'قيد الانتظار',
+        created_at: t.createdAt || new Date().toISOString().split('T')[0],
+        due_date: t.dueDate || '',
         updated_at: new Date().toISOString(),
       }));
 
@@ -211,7 +226,13 @@ export const syncAllDataToSupabase = async (
 };
 
 // Fetch all application data from Supabase
-export const fetchAllDataFromSupabase = async () => {
+export const fetchAllDataFromSupabase = async (): Promise<{
+  projects: ProjectItem[] | null;
+  providers: ServiceProviderItem[] | null;
+  contracts: ContractDeliverable[] | null;
+  emails: MashweerEmployeeEmail[] | null;
+  tasks: ProjectTask[] | null;
+} | null> => {
   const client = getSupabaseClient();
   if (!client) return null;
 
@@ -224,7 +245,7 @@ export const fetchAllDataFromSupabase = async () => {
       client.from('project_tasks').select('*').order('created_at', { ascending: true }),
     ]);
 
-    const projects = projRes.data && projRes.data.length > 0 ? projRes.data.map((p: any) => ({
+    const projects: ProjectItem[] | null = projRes.data && projRes.data.length > 0 ? projRes.data.map((p: any) => ({
       id: p.id,
       name: p.name,
       code: p.code,
@@ -233,59 +254,68 @@ export const fetchAllDataFromSupabase = async () => {
       description: p.description,
       repoUrl: p.repo_url,
       figmaUrl: p.figma_url,
-      liveUrl: p.live_url,
       apkFiles: p.apk_files || [],
       driveAssets: p.drive_assets || [],
       referenceChats: p.reference_chats || [],
       contextHints: p.context_hints || [],
       dbInfo: p.db_info || {},
+      notes: p.notes,
     })) : null;
 
-    const providers = provRes.data && provRes.data.length > 0 ? provRes.data.map((pr: any) => ({
+    const providers: ServiceProviderItem[] | null = provRes.data && provRes.data.length > 0 ? provRes.data.map((pr: any) => ({
       id: pr.id,
       name: pr.name,
       category: pr.category,
-      portalUrl: pr.portal_url,
-      username: pr.username,
-      status: pr.status,
-      notes: pr.notes,
-      costOrPlan: pr.cost_or_plan,
-      officialBadge: pr.official_badge,
+      website: pr.website || '',
+      contactPersons: pr.contact_persons || [],
+      subscriptionDate: pr.subscription_date || '',
+      renewalDate: pr.renewal_date || '',
+      costOrPlan: pr.cost_or_plan || '',
+      officialBadge: pr.official_badge || '',
       activeServices: pr.active_services || [],
+      credentials: pr.credentials || [],
+      tasks: pr.tasks || [],
+      linkedApps: pr.linked_apps || [],
+      notes: pr.notes || '',
     })) : null;
 
-    const contracts = conRes.data && conRes.data.length > 0 ? conRes.data.map((c: any) => ({
+    const contracts: ContractDeliverable[] | null = conRes.data && conRes.data.length > 0 ? conRes.data.map((c: any) => ({
       id: c.id,
-      title: c.title,
-      providerName: c.provider_name,
-      projectName: c.project_name,
-      status: c.status,
-      totalValue: c.total_value,
-      currency: c.currency,
-      paymentTerms: c.payment_terms,
-      deliverables: c.deliverables || [],
+      appName: c.app_name || c.appName || '',
+      appCode: c.app_code || c.appCode || '',
+      developerName: c.developer_name || c.developerName || '',
+      contractStatus: c.contract_status || c.contractStatus || 'جاري العمل',
+      targetDeliveryDate: c.target_delivery_date || c.targetDeliveryDate || '',
+      sourceCodeRepo: c.source_code_repo || c.sourceCodeRepo || '',
+      agreedPrice: c.agreed_price || c.agreedPrice || '',
+      paidAmount: c.paid_amount || c.paidAmount || '',
+      remainingAmount: c.remaining_amount || c.remainingAmount || '',
+      checklist: c.checklist || [],
+      notes: c.notes || '',
     })) : null;
 
-    const emails = mailRes.data && mailRes.data.length > 0 ? mailRes.data.map((m: any) => ({
+    const emails: MashweerEmployeeEmail[] | null = mailRes.data && mailRes.data.length > 0 ? mailRes.data.map((m: any) => ({
       id: m.id,
-      address: m.address,
-      roleTitle: m.role_title,
-      department: m.department,
-      status: m.status,
-      quota: m.quota,
-      assignedTo: m.assigned_to,
-      notes: m.notes,
+      employeeName: m.employee_name || m.employeeName || '',
+      role: m.role || '',
+      emailAddress: m.email_address || m.emailAddress || '',
+      status: m.status || 'تم الطلب - موعد الاستلام غداً',
+      provider: m.provider || 'Zoho Lite (المصرية لتكنولوجيا المعلومات)',
+      createdAt: m.created_at || m.createdAt || new Date().toISOString().split('T')[0],
+      deliveryDate: m.delivery_date || m.deliveryDate || '',
+      notes: m.notes || '',
     })) : null;
 
-    const tasks = taskRes.data && taskRes.data.length > 0 ? taskRes.data.map((t: any) => ({
+    const tasks: ProjectTask[] | null = taskRes.data && taskRes.data.length > 0 ? taskRes.data.map((t: any) => ({
       id: t.id,
+      projectId: t.project_id || t.projectId || '',
       title: t.title,
-      projectId: t.project_id,
-      status: t.status,
-      priority: t.priority,
-      dueDate: t.due_date,
-      assignedTo: t.assigned_to,
-      notes: t.notes,
+      description: t.description || '',
+      notes: t.notes || '',
+      priority: t.priority || 'عاجل',
+      status: t.status || 'قيد الانتظار',
+      createdAt: t.created_at || t.createdAt || new Date().toISOString().split('T')[0],
+      dueDate: t.due_date || t.dueDate || '',
     })) : null;
 
     return { projects, providers, contracts, emails, tasks };
