@@ -731,6 +731,10 @@ app.get("/api/telegram/logs", (_req, res) => {
   res.json({ logs: telegramActivityLog });
 });
 
+// Serve static assets from dist if available (for production build preview)
+const distPath = path.join(process.cwd(), "dist");
+app.use(express.static(distPath));
+
 // Start Server with Vite or Static
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -740,8 +744,6 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

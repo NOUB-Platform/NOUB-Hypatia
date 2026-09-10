@@ -69,31 +69,64 @@ ${p.openRequests?.length ? p.openRequests.map((r, i) => `  ${i + 1}. ${r}`).join
 أنا المشرف التقني والتشغيلي للمشروع. بناءً على الموقف الفعلي والطلبات المحددة بالأعلى، يرجى كتابة رد احترافي موجه لفريق التطوير يحدد الأولويات بدقة ويسألهم عن النقاط العالقة دون استرسال نظري.`;
   };
 
+  const copyToClipboard = (text: string, successMsg: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopyFeedback(successMsg);
+          setTimeout(() => setCopyFeedback(null), 3500);
+        }).catch(() => {
+          fallbackCopy(text, successMsg);
+        });
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    } catch {
+      fallbackCopy(text, successMsg);
+    }
+  };
+
+  const fallbackCopy = (text: string, successMsg: string) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      textArea.remove();
+      setCopyFeedback(successMsg);
+      setTimeout(() => setCopyFeedback(null), 3500);
+    } catch {
+      setCopyFeedback('يرجى تحديد النص ونسخه يدوياً');
+      setTimeout(() => setCopyFeedback(null), 3000);
+    }
+  };
+
   const handleCopyAiBrief = (p: ProjectCard) => {
     const brief = generateAiBrief(p);
-    navigator.clipboard.writeText(brief).then(() => {
-      setCopyFeedback('تم نسخ مذكرة المشروع بنجاح! جاهزة للصق في أي شات 📋');
-      setTimeout(() => setCopyFeedback(null), 3500);
-    });
+    copyToClipboard(brief, 'تم نسخ مذكرة المشروع بنجاح! جاهزة للصق في أي شات 📋');
   };
 
   const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_CLEAN_REBUILD_SQL).then(() => {
-      setCopyFeedback('تم نسخ كود الـ SQL النظيف بنجاح! الصقه في Supabase SQL Editor 🚀');
-      setTimeout(() => setCopyFeedback(null), 3500);
-    });
+    copyToClipboard(SUPABASE_CLEAN_REBUILD_SQL, 'تم نسخ كود الـ SQL النظيف بنجاح! الصقه في Supabase SQL Editor 🚀');
   };
 
   const resetToOfficial10 = () => {
-    if (window.confirm('هل تريد إعادة تعيين المشاريع إلى الـ 10 مشاريع الأصلية المعتمدة؟')) {
-      setProjects(OFFICIAL_10_PROJECTS);
-      setSelectedProjectId(null);
-      setIsEditing(false);
-      setIsAddingNew(false);
+    setProjects(OFFICIAL_10_PROJECTS);
+    setSelectedProjectId(null);
+    setIsEditing(false);
+    setIsAddingNew(false);
+    try {
       localStorage.removeItem('hypatia_official_10_projects_v2');
-      setCopyFeedback('تم استرجاع الـ 10 مشاريع الأصلية بالترتيب الصحيح (#001 إلى #010)');
-      setTimeout(() => setCopyFeedback(null), 3000);
+    } catch (e) {
+      console.error(e);
     }
+    setCopyFeedback('تم استرجاع الـ 10 مشاريع الأصلية بالترتيب الصحيح (#001 إلى #010)');
+    setTimeout(() => setCopyFeedback(null), 3000);
   };
 
   const startEdit = (p: ProjectCard) => {
@@ -152,11 +185,11 @@ ${p.openRequests?.length ? p.openRequests.map((r, i) => `  ${i + 1}. ${r}`).join
   };
 
   const deleteProject = (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المشروع من القائمة؟')) {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      setSelectedProjectId(null);
-      setIsEditing(false);
-    }
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setSelectedProjectId(null);
+    setIsEditing(false);
+    setCopyFeedback('تم حذف المشروع من القائمة بنجاح');
+    setTimeout(() => setCopyFeedback(null), 3000);
   };
 
   return (
