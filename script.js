@@ -1056,6 +1056,96 @@ function resetAllProjectsToOfficial() {
   }
 }
 
+// ==============================================================================
+// 8. Google Drive Integration (NOUB_IDLE sync & management)
+// ==============================================================================
+window.currentDriveAccessToken = null;
+
+function handleDriveSyncClick() {
+  const modal = document.getElementById('drive-modal');
+  if (modal) modal.style.display = 'flex';
+
+  // Check if we already have access token or need login
+  const authSection = document.getElementById('drive-auth-section');
+  if (!window.currentDriveAccessToken) {
+    if (authSection) authSection.style.display = 'block';
+  } else {
+    if (authSection) authSection.style.display = 'none';
+  }
+}
+
+function closeDriveModal() {
+  const modal = document.getElementById('drive-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function loginWithGoogleForDrive() {
+  if (window.googleDriveAuth && window.googleDriveAuth.signIn) {
+    showToast('جارٍ فتح تسجيل الدخول بحساب Google...');
+    await window.googleDriveAuth.signIn();
+  } else {
+    showToast('محرك تسجيل الدخول قيد التحميل، انتظر ثوانٍ وجرب ثانية');
+  }
+}
+
+window.onDriveTokenReceived = (token) => {
+  window.currentDriveAccessToken = token;
+  const authSection = document.getElementById('drive-auth-section');
+  if (authSection) authSection.style.display = 'none';
+  const btnText = document.getElementById('drive-btn-text');
+  if (btnText) btnText.innerText = 'NOUB_IDLE متصل ✅';
+  showToast('تم ربط حساب Google Drive بنجاح! جاهز للمزامنة');
+  runDriveSync();
+};
+
+async function runDriveSync() {
+  if (!window.currentDriveAccessToken) {
+    showToast('يرجى تسجيل الدخول بحساب Google أولاً للمزامنة');
+    const authSection = document.getElementById('drive-auth-section');
+    if (authSection) authSection.style.display = 'block';
+    return;
+  }
+
+  const syncBtn = document.getElementById('sync-now-action-btn');
+  if (syncBtn) {
+    syncBtn.innerText = '⏳ جاري المزامنة مع Google Drive...';
+    syncBtn.disabled = true;
+  }
+
+  showToast('جاري إنشاء وتحديث مستودع NOUB_IDLE والمجلدات على Drive...');
+
+  try {
+    const res = await fetch('/api/drive/setup-noub-idle', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${window.currentDriveAccessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('تم تحديث مجلد NOUB_IDLE وجميع الملفات بنجاح! 🚀');
+      const linkContainer = document.getElementById('drive-link-container');
+      const folderLink = document.getElementById('drive-master-folder-link');
+      if (linkContainer && folderLink && data.masterFolder && data.masterFolder.link) {
+        folderLink.href = data.masterFolder.link;
+        linkContainer.style.display = 'block';
+      }
+    } else {
+      showToast('خطأ أثناء المزامنة: ' + (data.error || ''));
+    }
+  } catch (err) {
+    console.error('Drive sync failed:', err);
+    showToast('حدث خطأ في الاتصال بالسيرفر للمزامنة');
+  } finally {
+    if (syncBtn) {
+      syncBtn.innerText = '⚡ تحديث ومزامنة الملفات والمشاريع الآن';
+      syncBtn.disabled = false;
+    }
+  }
+}
+
 // عرض كود SQL النظيف
 function showSqlModal() {
   const modal = document.getElementById('sql-modal');

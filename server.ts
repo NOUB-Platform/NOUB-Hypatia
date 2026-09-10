@@ -731,6 +731,348 @@ app.get("/api/telegram/logs", (_req, res) => {
   res.json({ logs: telegramActivityLog });
 });
 
+// ==============================================================================
+// Google Drive Integration Endpoints (Using client-supplied Bearer token)
+// ==============================================================================
+
+// Helper to call Google Drive v3 REST API with Bearer token
+async function callDriveApi(endpoint: string, token: string, options: RequestInit = {}) {
+  const url = endpoint.startsWith("http") ? endpoint : `https://www.googleapis.com/drive/v3${endpoint}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string> || {}),
+  };
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Drive API error (${response.status}): ${errorText}`);
+  }
+  return response.json();
+}
+
+// 1. Setup or Check NOUB_IDLE Master Structure
+app.post("/api/drive/setup-noub-idle", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing or invalid authorization header" });
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    // Check if NOUB_IDLE folder already exists
+    const searchRoot = await callDriveApi(
+      "/files?q=" + encodeURIComponent("name = 'NOUB_IDLE' and mimeType = 'application/vnd.google-apps.folder' and trashed = false") + "&fields=files(id, name, webViewLink)",
+      token
+    );
+
+    let masterFolder = searchRoot.files && searchRoot.files.length > 0 ? searchRoot.files[0] : null;
+
+    // If not exists, create NOUB_IDLE
+    if (!masterFolder) {
+      masterFolder = await callDriveApi(
+        "/files",
+        token,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "NOUB_IDLE",
+            mimeType: "application/vnd.google-apps.folder",
+            description: "المجلد الرئيسي الشامل لمشاريع منظومة نوب ومشاوير",
+          }),
+        }
+      );
+    }
+
+    const masterFolderId = masterFolder.id;
+
+    // Helper to find or create subfolder
+    async function getOrCreateSubfolder(name: string, parentId: string) {
+      const q = `name = '${name}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+      const search = await callDriveApi(`/files?q=${encodeURIComponent(q)}&fields=files(id, name, webViewLink)`, token);
+      if (search.files && search.files.length > 0) {
+        return search.files[0];
+      }
+      return await callDriveApi(
+        "/files",
+        token,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            mimeType: "application/vnd.google-apps.folder",
+            parents: [parentId],
+          }),
+        }
+      );
+    }
+
+    // Create / Verify: مشاوير & MINE_APPS
+    const mashweerFolder = await getOrCreateSubfolder("مشاوير", masterFolderId);
+    const mineAppsFolder = await getOrCreateSubfolder("MINE_APPS", masterFolderId);
+
+    // Subfolders inside مشاوير: 4B, WEKALA, DARO
+    const subProjectsMashweer = ["فور_بي_4B", "وكالة_WEKALA", "دارو_DARO"];
+    const mashweerSubfolders = [];
+    for (const name of subProjectsMashweer) {
+      const sub = await getOrCreateSubfolder(name, mashweerFolder.id);
+      mashweerSubfolders.push({ name, id: sub.id, link: sub.webViewLink });
+    }
+
+    // Subfolders inside MINE_APPS: نوب سبورتس، نوب الأساسي، غرفة التداول، لعبة نوب، هيباتيا، باي كور، أكاديمي برو
+    const subProjectsMine = [
+      "نوب_سبورتس_NOUB_Sports",
+      "نوب_الأساسي_NOUB_Main",
+      "غرفة_التداول_Trading_Ops",
+      "لعبة_نوب_NOUB_Game",
+      "هيباتيا_Hypatia_Ops",
+      "بوابة_الدفع_PayCore",
+      "أكاديمي_برو_Academy_Pro",
+    ];
+    const mineSubfolders = [];
+    for (const name of subProjectsMine) {
+      const sub = await getOrCreateSubfolder(name, mineAppsFolder.id);
+      mineSubfolders.push({ name, id: sub.id, link: sub.webViewLink });
+    }
+
+    // Helper to upload or update a file (Markdown or Text)
+    async function createOrUpdateTextFile(filename: string, parentId: string, content: string) {
+      const q = `name = '${filename}' and '${parentId}' in parents and trashed = false`;
+      const search = await callDriveApi(`/files?q=${encodeURIComponent(q)}&fields=files(id, name)`, token);
+      
+      const metadata = {
+        name: filename,
+        mimeType: "text/markdown",
+        parents: [parentId],
+      };
+
+      // Multipart upload
+      const boundary = "-------314159265358979323846";
+      const delimiter = "\r\n--" + boundary + "\r\n";
+      const closeDelim = "\r\n--" + boundary + "--";
+
+      const multipartRequestBody =
+        delimiter +
+        "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+        JSON.stringify(metadata) +
+        delimiter +
+        "Content-Type: text/markdown; charset=UTF-8\r\n\r\n" +
+        content +
+        closeDelim;
+
+      if (search.files && search.files.length > 0) {
+        // Update existing file content
+        const fileId = search.files[0].id;
+        const uploadRes = await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "text/markdown; charset=UTF-8",
+            },
+            body: content,
+          }
+        );
+        return await uploadRes.json();
+      } else {
+        // Create new file
+        const uploadRes = await fetch(
+          "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": `multipart/related; boundary=${boundary}`,
+            },
+            body: multipartRequestBody,
+          }
+        );
+        return await uploadRes.json();
+      }
+    }
+
+    // Create Root README.md in NOUB_IDLE
+    const rootReadme = `# دليل المستودع المركزي: NOUB_IDLE (نوب ومشاوير)
+المشرف العام: هيباتيا (Hypatia Ops)
+التاريخ: ${new Date().toLocaleDateString("ar-EG")}
+
+---
+
+## 📌 نبذة سريعة عن المستودع
+تم تصميم هذا المجلد ليكون المرجع والذاكرة المباشرة لأي نموذج ذكاء اصطناعي (أو مطور) لفهم الموقف التشغيلي الحقيقي لكافة المشاريع دون الحاجة لإعادة سرد القصة.
+
+## 📂 الهيكلة والمجلدات الفرعية:
+1. \`مشاوير/\`: يحتوي على مشاريع النقل والخدمات اللوجستية المشتركة:
+   - \`فور_بي_4B/\`: تطبيق نقل الركاب والأسطول (تم استلام APK + Dashboard).
+   - \`وكالة_WEKALA/\`: نظام الوكلاء ومكاتب التوزيع (APK تصميم فقط - Dashboard قيد التطوير).
+   - \`دارو_DARO/\`: الشحن اللوجستي بين المحافظات وتتبع الباركود.
+
+2. \`MINE_APPS/\`: يحتوي على المنظومات الخاصة والمشاريع التكنولوجية:
+   - \`نوب_سبورتس_NOUB_Sports/\`: إدارة الأكاديميات والبطولات الرياضية.
+   - \`نوب_الأساسي_NOUB_Main/\`: البوابة المركزية والهوية الرقمية.
+   - \`غرفة_التداول_Trading_Ops/\`: ربط البورصة ومصر للمقاصة وخطوط الربط.
+   - \`لعبة_نوب_NOUB_Game/\`: لعبة الألغاز والمقابر الحضارية المصرية.
+   - \`هيباتيا_Hypatia_Ops/\`: محرك العمليات وإعداد مذكرات الذكاء الاصطناعي.
+   - \`بوابة_الدفع_PayCore/\`: بوابات الدفع والمحافظ والربط البنكي.
+   - \`أكاديمي_برو_Academy_Pro/\`: قياس أداء ولياقة اللاعبين الصاعدين.
+
+---
+## 🤖 تعليمات القراءة السريعة لنماذج الذكاء الاصطناعي:
+- ابدأ بقراءة ملف \`STATUS_MATRIX.md\` الموجود هنا لمعرفة آخر موقف لكل مشروع.
+- عند إعداد برومبت أو توجيه كود لمشروع محدد، ادخل على ملف \`PROJECT_BRIEF.md\` داخل مجلد المشروع المطلوب.
+`;
+
+    await createOrUpdateTextFile("README.md", masterFolderId, rootReadme);
+
+    // Create Matrix File
+    const matrixContent = `# مصفوفة الموقف التشغيلي لجميع المشاريع (STATUS_MATRIX)
+تاريخ التحديث: ${new Date().toLocaleString("ar-EG")}
+
+| الكود | اسم المشروع | التصنيف | حالة تطبيق الموبايل (APK) | حالة لوحة التحكم (Dashboard) | الواجهات |
+|:---:|:---|:---:|:---|:---|:---:|
+| #001 | فور بي (4B) | مشاوير | ✅ استلمنا الـ APK للتجربة الميدانية | ✅ استلمنا الداش بورد للعمليات | فجما 95% |
+| #002 | وكالة (WeKaLa) | مشاوير | 📱 استلمنا APK واجهات فقط | ⏳ لم نستلم الداش بورد بعد | فيجما 80% |
+| #003 | دارو (Daro) | مشاوير | ⏳ في انتظار رفع نسخة الباركود | 📐 قيد التصميم الهندسي | فيجما 70% |
+| #004 | نوب سبورتس | MINE_APPS | ✅ نسخة v1.0.0-dev قيد التجربة | ✅ الداش بورد جاهز في الإنتاج | فيجما + كود 95% |
+| #005 | نوب الأساسي | MINE_APPS | 🌐 منصة ويب PWA | ✅ لوحة العضويات في الإنتاج | كود مباشر 100% |
+| #006 | غرفة التداول | MINE_APPS | 📈 شاشات غرفة العمليات | ✅ خطوط الربط ومصر للمقاصة تعمل | كود مباشر 100% |
+| #007 | لعبة نوب | MINE_APPS | 🏺 تجربة أول 5 مقابر (KV62) | ⏳ حفظ التقدم قيد الاختبار | فيجما 85% |
+| #008 | هيباتيا | MINE_APPS | ⚡ نظام إعداد مذكرات الـ AI | ✅ تعمل لحظياً 24/7 | كود مباشر 100% |
+| #009 | بوابة الدفع | MINE_APPS | 💳 SDK مدمج في فور بي ونوب سبورتس | ✅ متابعة العمليات نشطة | كود مباشر 100% |
+| #010 | أكاديمي برو | MINE_APPS | ⏳ في انتظار أول APK تجريبي | ✅ لوحة التقييمات جاهزة | فيجما 75% |
+`;
+
+    await createOrUpdateTextFile("STATUS_MATRIX.md", masterFolderId, matrixContent);
+
+    // Populate each project folder with its dedicated PROJECT_BRIEF.md
+    // 1. 4B
+    await createOrUpdateTextFile(
+      "PROJECT_BRIEF.md",
+      mashweerSubfolders[0].id,
+      `# فور بي (4B Passenger & Fleet) - #001
+- **التصنيف:** مشاوير
+- **حالة الـ APK:** استلمنا الـ APK التجريبي للتشغيل والتجربة الميدانية
+- **حالة الداش بورد:** استلمنا الداش بورد لاختبار العمليات وإدخال وتدقيق البيانات
+- **نسبة فيجما:** 95%
+- **الإيميلات المعتمدة:** admin@4b-app.com, support@4b-app.com, team@4b-app.com, operations@4b-app.com
+- **الميتنج القادم:** السبت القادم - 5:00 مساءً (Google Meet)
+- **روابط هامة:**
+  - فيجما: https://www.figma.com/design/ulWwUzLnKThS2cfJWDetX6
+  - الداش بورد: https://dashboard.mashawer.com.eg
+  - GitHub: https://github.com/mashweer/4b-passenger-app
+  - Drive: https://drive.google.com/drive/folders/1MASHWEER_VALUE_TECH_ASSETS
+- **الطلبات المفتوحة:**
+  1. مراجعة إشعارات الدفع والخصومات التلقائية
+  2. فحص سرعة استجابة الخرائط وتتبع الكابتن المباشر
+- **ملاحظات تشغيلية:** التطبيق والداش بورد يجري اختبارهما معاً لمطابقة تدفق البيانات من التطبيق إلى لوحة العمليات.`
+    );
+
+    // 2. Wekala
+    await createOrUpdateTextFile(
+      "PROJECT_BRIEF.md",
+      mashweerSubfolders[1].id,
+      `# وكالة (WeKaLa Fleet & Agency) - #002
+- **التصنيف:** مشاوير
+- **حالة الـ APK:** استلمنا الـ APK لتقييم واجهات التصميم فقط على الهاتف
+- **حالة الداش بورد:** لم نستلم الداش بورد بعد (قيد التطوير من الفريق الخارجي)
+- **نسبة فيجما:** 80%
+- **الإيميلات المعتمدة:** contact@wekala.com, dev@wekala.com, partner@wekala.com
+- **الميتنج القادم:** الأحد القادم - 6:30 مساءً
+- **روابط هامة:**
+  - فيجما: https://www.figma.com/design/oYxkmwZcGae674BRA5ZOen/Wikala
+  - GitHub: https://github.com/mashweer/wekala-fleet-management
+- **الطلبات المفتوحة:**
+  1. استلام الداش بورد لتقييم إدارة مكاتب الوكلاء والعمولات
+  2. تعديل خط القائمة الجانبية في شاشات تسجيل الوكيل
+  3. ربط خرائط فروع الوكلاء ومحطات التوزيع`
+    );
+
+    // 3. Daro
+    await createOrUpdateTextFile(
+      "PROJECT_BRIEF.md",
+      mashweerSubfolders[2].id,
+      `# دارو (Daro Cargo & Shipping) - #003
+- **التصنيف:** مشاوير
+- **حالة الـ APK:** في انتظار رفع نسخة الـ APK الخاصة بقارئ الباركود ومحطات الشحن
+- **حالة الداش بورد:** لوحة توزيع محطات الشحن قيد التصميم الهندسي
+- **نسبة فيجما:** 70%
+- **الإيميلات المعتمدة:** cargo@mashawer.com.eg, operations@daro.com
+- **الميتنج القادم:** الإثنين القادم - 4:30 عصراً
+- **روابط هامة:**
+  - فيجما: https://www.figma.com/design/aR1aanpRzGL7aMoxROGgt5/Daro
+  - GitHub: https://github.com/mashweer/daro-cargo-system
+- **الطلبات المفتوحة:**
+  1. فحص سرعة قراءة الباركود للطرود عند استلام الشحنة
+  2. تجهيز بوليصة الشحن الرقمية وإرسال رسالة SMS للعميل`
+    );
+
+    res.json({
+      success: true,
+      masterFolder: {
+        id: masterFolderId,
+        name: "NOUB_IDLE",
+        link: masterFolder.webViewLink || `https://drive.google.com/drive/folders/${masterFolderId}`,
+      },
+      mashweer: {
+        id: mashweerFolder.id,
+        link: mashweerFolder.webViewLink,
+        subfolders: mashweerSubfolders,
+      },
+      mineApps: {
+        id: mineAppsFolder.id,
+        link: mineAppsFolder.webViewLink,
+        subfolders: mineSubfolders,
+      },
+      message: "تم إنشاء وتنسيق مستودع NOUB_IDLE بالكامل على Google Drive بنجاح!",
+    });
+  } catch (error: any) {
+    console.error("Error setting up NOUB_IDLE on Drive:", error);
+    res.status(500).json({ error: error.message || "Failed to setup Drive folder structure" });
+  }
+});
+
+// 2. Query or read files from NOUB_IDLE
+app.get("/api/drive/noub-idle-status", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing authorization token" });
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    const searchRoot = await callDriveApi(
+      "/files?q=" + encodeURIComponent("name = 'NOUB_IDLE' and mimeType = 'application/vnd.google-apps.folder' and trashed = false") + "&fields=files(id, name, webViewLink)",
+      token
+    );
+
+    if (!searchRoot.files || searchRoot.files.length === 0) {
+      return res.json({ exists: false });
+    }
+
+    const folder = searchRoot.files[0];
+
+    // List files inside NOUB_IDLE
+    const list = await callDriveApi(
+      `/files?q=${encodeURIComponent(`'${folder.id}' in parents and trashed = false`)}&fields=files(id, name, mimeType, webViewLink, modifiedTime)`,
+      token
+    );
+
+    res.json({
+      exists: true,
+      folder: {
+        id: folder.id,
+        name: folder.name,
+        link: folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`,
+      },
+      files: list.files || [],
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve static assets from dist if available (for production build preview)
 const distPath = path.join(process.cwd(), "dist");
 app.use(express.static(distPath));

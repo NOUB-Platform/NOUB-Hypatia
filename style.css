@@ -640,3 +640,39 @@ body {
   direction: ltr;
   text-align: left;
 }
+
+/* Google Drive Sync Banner & Button */
+.drive-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(66, 133, 244, 0.15);
+  border: 1px solid rgba(66, 133, 244, 0.35);
+  color: #60a5fa;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.drive-sync-badge:hover {
+  background: rgba(66, 133, 244, 0.25);
+  border-color: #60a5fa;
+}
+
+.drive-folder-tree {
+  background: #090d16;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #93c5fd;
+  line-height: 1.8;
+  direction: ltr;
+  text-align: left;
+  max-height: 220px;
+  overflow-y: auto;
+}
