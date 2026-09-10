@@ -478,13 +478,13 @@ function openProjectDetails(id) {
       <!-- Quick AI Action Banner -->
       <div class="ai-export-card">
         <div style="font-size: 13px; font-weight: 700; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
-          ⚡ مذكرة التوجيه للذكاء الاصطناعي (Prompt Export)
+          مذكرة المشروع للذكاء الاصطناعي
         </div>
-        <div style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
-          انسخ مذكرة الموقف التشغيلي الحالية متضمنة أحدث التحديثات والرسائل الصوتية وروابط العمل، وأرسلها فوراً لشات الذكاء الاصطناعي لتوجيه الفريق.
+        <div style="font-size: 12px; color: #94a3b8; line-height: 1.5;">
+          نسخ تقرير حالة المشروع والتحديثات الصوتية والروابط ولصقها في أي شات ذكاء اصطناعي.
         </div>
         <button class="ai-export-btn" onclick="copyAiBrief('${project.id}')">
-          📋 نسخ المذكرة الذكية للـ AI
+          📋 نسخ المذكرة للـ AI
         </button>
       </div>
 
@@ -953,42 +953,37 @@ function toggleVoiceInput(targetTextareaId) {
 // 7. تصدير مذكرة الذكاء الاصطناعي الشاملة (AI Brief with Voice & Updates)
 // ==============================================================================
 function generateAiBrief(p) {
-  return `مذكرة حالة وتوجيه المشروع: ${p.name} (${p.number})
+  return `مذكرة مشروع: ${p.name} (${p.number})
 ============================================================
-المشرف العام: هيباتيا للعمليات التقنية (Hypatia Senior Tech & Ops)
 التاريخ: ${new Date().toLocaleDateString('ar-EG')}
 
 1. البيانات الأساسية:
-- الاسم بالإنجليزية: ${p.nameEn || p.name}
-- تصنيف المنظومة: ${p.category}
-- منهجية الواجهات (UI/UX): ${p.uiType === 'figma' ? 'تصميم فيجما' : p.uiType === 'code' ? 'تصميم أكواد مباشرة' : 'مشترك'} ${p.figmaProgress ? `(نسبة الإنجاز: ${p.figmaProgress}%)` : ''}
+- الاسم: ${p.name} (${p.nameEn || ''})
+- التصنيف: ${p.category}
+- الواجهات: ${p.uiType === 'figma' ? 'فيجما' : p.uiType === 'code' ? 'أكواد مباشرة' : 'مشترك'} ${p.figmaProgress ? `(${p.figmaProgress}%)` : ''}
 
-2. حالة التسليمات والجاهزية:
+2. حالة التسليم:
 - تطبيق الهاتف (APK): ${p.apkStatus || 'غير محدد'}
 - لوحة التحكم (Dashboard): ${p.dashboardStatus || 'غير محدد'}
-- الإيميلات الرسمية: ${p.hasEmails && p.emailsList ? p.emailsList.join(', ') : 'لا توجد إيميلات'}
-- الموقع الرسمي: ${p.hasWebsite && p.websiteUrl ? p.websiteUrl : 'غير مفعل حالياً'}
-- الميتنج القادم: ${p.nextMeeting || 'غير مجدول'} ${p.meetingLink ? `[رابط: ${p.meetingLink}]` : ''}
+- الإيميلات: ${p.hasEmails && p.emailsList ? p.emailsList.join(', ') : 'لا توجد'}
+- الموقع: ${p.hasWebsite && p.websiteUrl ? p.websiteUrl : 'لا يوجد'}
+- الميتنج القادم: ${p.nextMeeting || 'غير مجدول'} ${p.meetingLink ? `[${p.meetingLink}]` : ''}
 
-3. التحديثات والرسائل الصوتية الأخيرة:
-${p.voiceNotes ? `  * "${p.voiceNotes}"` : '  * لا توجد تحديثات صوتية جديدة.'}
+3. التحديثات والملاحظات الصوتية:
+${p.voiceNotes ? `  * "${p.voiceNotes}"` : '  * لا توجد تحديثات جديدة.'}
 
-4. الطلبات والملاحظات المفتوحة (${p.openRequests ? p.openRequests.length : 0}):
+4. الطلبات المعلقة (${p.openRequests ? p.openRequests.length : 0}):
 ${p.openRequests && p.openRequests.length > 0 ? p.openRequests.map((r, i) => `  ${i + 1}. ${r}`).join('\n') : '  لا توجد طلبات معلقة.'}
 
-5. الروابط المباشرة للمشروع:
-- لوحة التحكم: ${p.dashboardLink || 'غير متوفرة'}
-- ملف الـ APK: ${p.apkLink || 'غير متوفر'}
-- ملف فيجما: ${p.figmaLink || 'غير متوفر'}
-- مستودع GitHub: ${p.githubLink || 'غير متوفر'}
-- مجلد Google Drive: ${p.driveLink || 'غير متوفر'}
+5. الروابط:
+- الداش بورد: ${p.dashboardLink || 'غير متوفر'}
+- الـ APK: ${p.apkLink || 'غير متوفر'}
+- فيجما: ${p.figmaLink || 'غير متوفر'}
+- GitHub: ${p.githubLink || 'غير متوفر'}
+- Drive: ${p.driveLink || 'غير متوفر'}
 
-6. الموقف التشغيلي الشامل:
-${p.notes || 'مستمر وفق الخطة المعتمدة.'}
-
-============================================================
-الطلب الموجه للذكاء الاصطناعي:
-بصفتك مستشاراً برمجياً وتقنياً في الفريق، بناءً على حالة التسليمات والتحديثات الصوتية والملاحظات الموضحة أعلاه، قم بصياغة خطة عمل فورية محددة بالأولويات للنقاط العالقة، وكتابة رسالة توجيهية مهنية موجهة للمطورين تركز على المعوقات دون إطالة نظرية.`;
+6. ملاحظات إضافية:
+${p.notes || 'لا توجد.'}`;
 }
 
 function copyAiBrief(id) {

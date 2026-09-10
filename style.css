@@ -53,8 +53,8 @@ body {
 
 /* Header */
 .app-header {
-  padding: 16px 18px;
-  background: linear-gradient(180deg, #121829 0%, #0c101d 100%);
+  padding: 12px 18px;
+  background: rgba(13, 18, 31, 0.85);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
@@ -62,38 +62,17 @@ body {
   backdrop-filter: blur(12px);
 }
 
-.header-top {
+.header-main {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  padding: 4px 12px;
-  border-radius: 9999px;
+.brand-title {
+  font-size: 19px;
+  font-weight: 800;
   color: #fbbf24;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.live-indicator {
-  width: 8px;
-  height: 8px;
-  background-color: #10b981;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #10b981;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.15); }
+  letter-spacing: -0.3px;
 }
 
 .header-actions {
@@ -120,25 +99,6 @@ body {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-main);
   border-color: rgba(255, 255, 255, 0.2);
-}
-
-.header-title-row {
-  margin-top: 14px;
-}
-
-.app-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.app-subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 /* Category Filter Tabs */
